@@ -9,8 +9,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 ENV = os.getenv("ENV", "DEV")
 DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
-# Optional: set your development guild ID
-DEV_GUILD = discord.Object(id=DEV_GUILD_ID)
+DEV_GUILD = discord.Object(id=int(DEV_GUILD_ID))
 
 games = {}  # guild_id: GameManager
 
@@ -111,7 +110,6 @@ async def endround(interaction: discord.Interaction, user: discord.Member = None
         await interaction.response.send_message("Only the host can end the round.", ephemeral=True)
         return
     if user:
-        # Remove the user from the game if present
         game.players = [p for p in game.players if p.id != user.id]
         await interaction.response.send_message(f"{user.mention} has been removed from the game.")
         if len(game.players) < 3:
@@ -119,7 +117,6 @@ async def endround(interaction: discord.Interaction, user: discord.Member = None
             del games[interaction.guild_id]
             await interaction.followup.send("Not enough players to continue. The game has ended.")
             return
-    # End the round and proceed to the next if possible
     game.voting_open = False
     if game.votes_done_event:
         game.votes_done_event.set()
