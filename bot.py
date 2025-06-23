@@ -46,16 +46,15 @@ async def ping(interaction: discord.Interaction):
 @app_commands.describe(
     rounds="How many rounds to play (default: 4)",
     timer="Timer for discussion/voting in seconds (default: 90)",
-    anonymous="Post answers anonymously? (default: false)",
     no_vote_timer="No timer for voting? (default: false)"
 )
-async def startgame(interaction: discord.Interaction, rounds: int = 4, timer: int = 90, anonymous: bool = False, no_vote_timer: bool = False):
+async def startgame(interaction: discord.Interaction, rounds: int = 4, timer: int = 90, no_vote_timer: bool = False):
     guild_id = interaction.guild_id
     if guild_id in games and games[guild_id].active:
         await interaction.response.send_message("A game is already active in this server.", ephemeral=True)
         return
 
-    game = GameManager(guild=interaction.guild, host=interaction.user, rounds=rounds, timer=timer, anonymous=anonymous, no_vote_timer=no_vote_timer)
+    game = GameManager(guild=interaction.guild, host=interaction.user, rounds=rounds, timer=timer, anonymous=None, no_vote_timer=no_vote_timer)
     games[guild_id] = game
     await game.start_lobby(interaction)
 

@@ -87,7 +87,7 @@ python bot.py
 1. **Start a Game:** Use `/startgame` to create a lobby. Players join with `/join`.
 2. **Begin:** Host uses `/start` to begin. Each player gets a question in DM—one player (the imposter) gets a slightly different question.
 3. **Answer:** Players submit answers with `/answer`.
-4. **Reveal:** Answers are shown (anonymously if chosen), and the common question is revealed.
+4. **Reveal:** Answers are shown (with player names), and the common question is revealed.
 5. **Vote:** Players discuss and vote for the imposter using `/vote`.
 6. **Scoring:** Points are awarded for catching or escaping as the imposter.
 7. **Rounds:** The game continues for the chosen number of rounds. Use `/scoreboard` anytime to see scores.
@@ -98,7 +98,6 @@ python bot.py
 ## ✅ Features & Enhancements
 
 - Custom question pairs in [`questions_custom.py`](questions_custom.py)
-- Anonymous answer option
 - Optional voting timer or manual vote end
 - Host controls for ending rounds or removing players
 - Scoreboard and final leaderboard

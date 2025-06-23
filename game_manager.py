@@ -11,7 +11,6 @@ class GameManager:
         self.host = host
         self.rounds_total = rounds
         self.timer = timer
-        self.anonymous = anonymous
         self.no_vote_timer = no_vote_timer
         self.players = []
         self.active = True
@@ -31,7 +30,7 @@ class GameManager:
         await interaction.response.send_message(
             f"A new game of **Guess the Imposter** has started!\n"
             f"Type `/join` to participate.\n"
-            f"Rounds: {self.rounds_total} | Timer: {self.timer}s | Anonymous answers: {self.anonymous}\n"
+            f"Rounds: {self.rounds_total} | Timer: {self.timer}s\n"
             f"The host must run `/start` to begin once enough players join."
         )
 
@@ -106,10 +105,7 @@ class GameManager:
     async def reveal_answers(self):
         msg = "\n📝 All answers:\n"
         for user, answer in self.answers.items():
-            if not self.anonymous:
-                msg += f"{user.mention}: {answer}\n"
-            else:
-                msg += f"Answer: {answer}\n"
+            msg += f"{user.mention}: {answer}\n"
         await self.channel.send(msg)
         await self.reveal_question()
 
