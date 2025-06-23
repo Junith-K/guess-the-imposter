@@ -4,12 +4,29 @@ from discord import app_commands
 import os
 from dotenv import load_dotenv
 from game_manager import GameManager
+from flask import Flask
+from threading import Thread
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 ENV = os.getenv("ENV", "DEV")
 DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
 DEV_GUILD = discord.Object(id=int(DEV_GUILD_ID))
+
+# Keep-alive HTTP endpoint
+app = Flask('')
+@app.route('/')
+def home():
+    return "Bot is running."
+
+def run():
+    app.run(host='0.0.0.0', port=8000)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+keep_alive()
 
 games = {}  # guild_id: GameManager
 
