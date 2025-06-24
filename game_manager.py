@@ -236,10 +236,10 @@ class GameManager:
         if not self.answers:
             await self.channel.send("No answers to reveal. Moving to next round.")
             return
-            
+        
         msg = "\n📝 **All answers:**\n"
         for user, answer in self.answers.items():
-            msg += f"• {user.display_name}: {answer}\n"
+            msg += f"• {user.mention}: {answer}\n"
         await self.channel.send(msg)
         await self.reveal_question()
 
@@ -380,7 +380,14 @@ class GameManager:
         leaderboard = sorted([(player, self.scores.get(player.id, 0)) for player in self.players], key=lambda x: -x[1])
         msg = "\n🏆 **Final Scores:**\n"
         for i, (player, score) in enumerate(leaderboard):
-            emoji = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "🏅"
+            if i == 0:
+                emoji = "🥇"
+            elif i == 1:
+                emoji = "🥈"
+            elif i == 2:
+                emoji = "🥉"
+            else:
+                emoji = "🏅"
             msg += f"{emoji} {player.mention} - {score} pts\n"
         await self.channel.send(msg)
         
