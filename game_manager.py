@@ -64,18 +64,15 @@ class GameManager:
             await interaction.response.send_message("You must be a member of the server to join.", ephemeral=True)
             return
         
-        # Check if bot can DM the user (don't send actual message)
+        # Check if bot can DM the user by sending a test message
         try:
-            # Test DM capability without sending a message
-            dm_channel = await interaction.user.create_dm()
-            if not dm_channel:
-                raise Exception("Cannot create DM")
+            await interaction.user.send("✅ Test successful - you can receive DMs! You can safely ignore this message.")
+            # If DM succeeds, add player and respond
+            self.players.append(interaction.user)
+            await interaction.response.send_message(f"{interaction.user.mention} joined the game! ({len(self.players)} players)")
         except Exception:
             await interaction.response.send_message("I can't DM you. Please enable DMs from server members to join.", ephemeral=True)
             return
-        
-        self.players.append(interaction.user)
-        await interaction.response.send_message(f"{interaction.user.mention} joined the game! ({len(self.players)} players)")
 
     async def remove_player(self, user):
         """Remove a player and clean up their data"""

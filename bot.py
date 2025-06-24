@@ -63,8 +63,7 @@ async def startgame(interaction: discord.Interaction, rounds: int = 4, timer: in
     if guild_id in games and games[guild_id].active:
         await interaction.response.send_message("A game is already active in this server.", ephemeral=True)
         return
-    
-    # Check bot permissions
+      # Check bot permissions
     if not interaction.channel.permissions_for(interaction.guild.me).send_messages:
         await interaction.response.send_message("I don't have permission to send messages in this channel.", ephemeral=True)
         return
@@ -72,20 +71,20 @@ async def startgame(interaction: discord.Interaction, rounds: int = 4, timer: in
     # Check if host can receive DMs
     try:
         await interaction.user.send("Game creation test - you can safely ignore this message.")
+        # If DM succeeds, create the game
+        game = GameManager(guild=interaction.guild, host=interaction.user, rounds=rounds, timer=timer, anonymous=None, no_vote_timer=no_vote_timer)
+        games[guild_id] = game
+        
+        # Set up cleanup callback
+        async def cleanup_callback():
+            if guild_id in games:
+                del games[guild_id]
+        game._cleanup_callback = cleanup_callback
+        
+        await game.start_lobby(interaction)
     except Exception:
         await interaction.response.send_message("I can't DM you. Please enable DMs from server members to host a game.", ephemeral=True)
         return
-
-    game = GameManager(guild=interaction.guild, host=interaction.user, rounds=rounds, timer=timer, anonymous=None, no_vote_timer=no_vote_timer)
-    games[guild_id] = game
-    
-    # Set up cleanup callback
-    async def cleanup_callback():
-        if guild_id in games:
-            del games[guild_id]
-    game._cleanup_callback = cleanup_callback
-    
-    await game.start_lobby(interaction)
 
 @tree.command(name="join", description="Join the game session")
 async def join(interaction: discord.Interaction):
