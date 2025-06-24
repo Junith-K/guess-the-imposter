@@ -26,9 +26,7 @@ class GameManager:
         self.no_vote_timer = no_vote_timer
         self.players = []
         self.active = True
-        self.game_started = False  # Track if /start was called
-
-        self.current_round = 0
+        self.game_started = False  # Track if /start was called        self.current_round = 0
         self.imposter = None
         self.common_question = None
         self.imposter_question = None
@@ -42,10 +40,11 @@ class GameManager:
 
     async def start_lobby(self, interaction):
         self.channel = interaction.channel
+        timer_info = f"Timer: {self.timer}s" if not self.no_vote_timer else "No timer (unlimited voting time)"
         await interaction.response.send_message(
             f"A new game of **Guess the Imposter** has started!\n"
             f"Type `/join` to participate.\n"
-            f"Rounds: {self.rounds_total} | Timer: {self.timer}s\n"
+            f"Rounds: {self.rounds_total} | {timer_info}\n"
             f"The host must run `/start` to begin once enough players join."
         )
 
