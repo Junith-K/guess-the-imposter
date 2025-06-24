@@ -35,6 +35,9 @@ class GameManager:
         )
 
     async def add_player(self, interaction):
+        if not self.active or self.current_round > 0:
+            await interaction.response.send_message("You can't join after the game has started.", ephemeral=True)
+            return
         if any(p.id == interaction.user.id for p in self.players):
             await interaction.response.send_message("You've already joined the game.", ephemeral=True)
             return
