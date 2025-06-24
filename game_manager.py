@@ -26,7 +26,8 @@ class GameManager:
         self.no_vote_timer = no_vote_timer
         self.players = []
         self.active = True
-        self.game_started = False  # Track if /start was called        self.current_round = 0
+        self.game_started = False  # Track if /start was called
+        self.current_round = 0
         self.imposter = None
         self.common_question = None
         self.imposter_question = None
