@@ -49,29 +49,35 @@ class GameManager:
         )
 
     async def add_player(self, interaction):
-        if not self.active:
-            await interaction.response.send_message("This game has ended.", ephemeral=True)
-            return
-        if self.game_started or self.current_round > 0:
-            await interaction.response.send_message("You can't join after the game has started.", ephemeral=True)
-            return
-        if any(p.id == interaction.user.id for p in self.players):
-            await interaction.response.send_message("You've already joined the game.", ephemeral=True)
-            return
-        
-        # Check if user is still in the guild
-        if not discord.utils.get(self.guild.members, id=interaction.user.id):
-            await interaction.response.send_message("You must be a member of the server to join.", ephemeral=True)
-            return
-        
-        # Check if bot can DM the user by sending a test message
         try:
-            await interaction.user.send("✅ Test successful - you can receive DMs! You can safely ignore this message.")
-            # If DM succeeds, add player and respond
-            self.players.append(interaction.user)
-            await interaction.response.send_message(f"{interaction.user.mention} joined the game! ({len(self.players)} players)")
-        except Exception:
-            await interaction.response.send_message("I can't DM you. Please enable DMs from server members to join.", ephemeral=True)
+            if not self.active:
+                await interaction.response.send_message("This game has ended.", ephemeral=True)
+                return
+            if self.game_started or self.current_round > 0:
+                await interaction.response.send_message("You can't join after the game has started.", ephemeral=True)
+                return
+            if any(p.id == interaction.user.id for p in self.players):
+                await interaction.response.send_message("You've already joined the game.", ephemeral=True)
+                return
+            # Check if user is still in the guild
+            if not discord.utils.get(self.guild.members, id=interaction.user.id):
+                await interaction.response.send_message("You must be a member of the server to join.", ephemeral=True)
+                return
+            # Check if bot can DM the user by sending a test message
+            try:
+                await interaction.user.send("✅ Test successful - you can receive DMs! You can safely ignore this message.")
+                # If DM succeeds, add player and respond
+                self.players.append(interaction.user)
+                await interaction.response.send_message(f"{interaction.user.mention} joined the game! ({len(self.players)} players)")
+            except Exception:
+                await interaction.response.send_message("I can't DM you. Please enable DMs from server members to join.", ephemeral=True)
+                return
+        except Exception as e:
+            # Catch-all to ensure a response is always sent
+            try:
+                await interaction.response.send_message(f"An unexpected error occurred: {str(e)}", ephemeral=True)
+            except Exception:
+                pass
             return
 
     async def remove_player(self, user):
