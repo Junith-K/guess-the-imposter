@@ -107,6 +107,9 @@ class GameManager:
                 self.voting_open = False
                 if self.votes_done_event:
                     self.votes_done_event.set()
+        # If not enough players after removal
+        if len(self.players) < 3:
+            await self.end_game_with_results("Not enough players to continue (player left).")
 
     async def begin_game(self, interaction):
         # Check if host left server
@@ -145,13 +148,10 @@ class GameManager:
         self.current_round += 1
         self.answers.clear()
         self.votes.clear()
-        
         # Check if we have questions available
         if not QUESTION_PAIRS:
-            await self.channel.send("No questions available. Game ended.")
-            self.active = False
+            await self.end_game_with_results("No questions available.")
             return
-        
         # Remove players who left the server
         removed = []
         for player in list(self.players):
@@ -160,10 +160,8 @@ class GameManager:
                 self.players.remove(player)
         if removed:
             await self.channel.send(", ".join(p.mention for p in removed) + " left the server and were removed from the game.")
-            
         if not self.players or len(self.players) < 3:
-            await self.channel.send("Not enough players to continue. Game ended.")
-            self.active = False
+            await self.end_game_with_results("Not enough players to continue.")
             return
 
         self.imposter = random.choice(self.players)
@@ -187,10 +185,8 @@ class GameManager:
         for player in failed_dms:
             self.players.remove(player)
             await self.channel.send(f"{player.mention} could not be DM'd and was removed from the game.")
-
         if len(self.players) < 3:
-            await self.channel.send("Not enough players to continue. Game ended.")
-            self.active = False
+            await self.end_game_with_results("Not enough players to continue (DM failure).")
             return
 
         await self.channel.send(
@@ -315,91 +311,106 @@ class GameManager:
                 self.votes_done_event.set()
 
     async def reveal_results(self):
-        if not self.votes:
-            await self.channel.send("No votes were cast. The imposter escapes!")
-            if self.imposter and any(p.id == self.imposter.id for p in self.players):
-                await self.channel.send(f"❗ The imposter was {self.imposter.mention}!")
-                if self.imposter_question:
-                    await self.channel.send(f"❓ Their question was: \"{self.imposter_question}\"")
-                self.scores[self.imposter.id] = self.scores.get(self.imposter.id, 0) + 2
-            elif self.imposter:
-                await self.channel.send("❗ The imposter left the game!")
+        try:
+            if not self.votes:
+                await self.channel.send("No votes were cast. The imposter escapes!")
+                if self.imposter and any(p.id == self.imposter.id for p in self.players):
+                    await self.channel.send(f"❗ The imposter was {self.imposter.mention}!")
+                    if self.imposter_question:
+                        await self.channel.send(f"❓ Their question was: \"{self.imposter_question}\"")
+                    self.scores[self.imposter.id] = self.scores.get(self.imposter.id, 0) + 2
+                elif self.imposter:
+                    await self.channel.send("❗ The imposter left the game!")
+                await asyncio.sleep(2)
+                await self.continue_game()
+                return
+            
+            vote_counts = {}
+            for voter, voted in self.votes.items():
+                vote_counts[voted] = vote_counts.get(voted, 0) + 1
+
+            # Handle tie: imposter wins by default
+            max_votes = max(vote_counts.values())
+            top_voted = [user for user, count in vote_counts.items() if count == max_votes]
+            
+            if len(top_voted) > 1:
+                await self.channel.send("It's a tie! The imposter escapes by default.")
+                if self.imposter:
+                    await self.channel.send(f"❗ The imposter was {self.imposter.mention}!")
+                    if self.imposter_question:
+                        await self.channel.send(f"❓ Their question was: \"{self.imposter_question}\"")
+                    self.scores[self.imposter.id] = self.scores.get(self.imposter.id, 0) + 2
+            else:
+                top_voted = top_voted[0]
+                await self.channel.send(f"❗ **The imposter was {self.imposter.mention}!**")
+                await self.channel.send(f"❓ Their question was: \"{self.imposter_question}\"")
+
+                if top_voted.id == self.imposter.id:
+                    await self.channel.send("🎯 **The imposter was caught!**")
+                    for voter, voted in self.votes.items():
+                        if voted.id == self.imposter.id and voter.id != self.imposter.id:
+                            self.scores[voter.id] = self.scores.get(voter.id, 0) + 1
+                else:
+                    await self.channel.send("😈 **The imposter got away!**")
+                    # Only award points to imposter if they're still in the game
+                    if any(p.id == self.imposter.id for p in self.players):
+                        self.scores[self.imposter.id] = self.scores.get(self.imposter.id, 0) + 2
+
             await asyncio.sleep(2)
             await self.continue_game()
-            return
-            
-        vote_counts = {}
-        for voter, voted in self.votes.items():
-            vote_counts[voted] = vote_counts.get(voted, 0) + 1
-
-        # Handle tie: imposter wins by default
-        max_votes = max(vote_counts.values())
-        top_voted = [user for user, count in vote_counts.items() if count == max_votes]
-        
-        if len(top_voted) > 1:
-            await self.channel.send("It's a tie! The imposter escapes by default.")
-            if self.imposter:
-                await self.channel.send(f"❗ The imposter was {self.imposter.mention}!")
-                if self.imposter_question:
-                    await self.channel.send(f"❓ Their question was: \"{self.imposter_question}\"")
-                self.scores[self.imposter.id] = self.scores.get(self.imposter.id, 0) + 2
-        else:
-            top_voted = top_voted[0]
-            await self.channel.send(f"❗ **The imposter was {self.imposter.mention}!**")
-            await self.channel.send(f"❓ Their question was: \"{self.imposter_question}\"")
-
-            if top_voted.id == self.imposter.id:
-                await self.channel.send("🎯 **The imposter was caught!**")
-                for voter, voted in self.votes.items():
-                    if voted.id == self.imposter.id and voter.id != self.imposter.id:
-                        self.scores[voter.id] = self.scores.get(voter.id, 0) + 1
-            else:
-                await self.channel.send("😈 **The imposter got away!**")
-                # Only award points to imposter if they're still in the game
-                if any(p.id == self.imposter.id for p in self.players):
-                    self.scores[self.imposter.id] = self.scores.get(self.imposter.id, 0) + 2
-
-        await asyncio.sleep(2)
-        await self.continue_game()
+        except Exception as e:
+            await self.channel.send(f"❗ An unexpected error occurred during results: {str(e)}. The game has ended.")
+            self.active = False
+            await self._cleanup_game()
 
     async def continue_game(self):
-        # Show scorecard after every round except the last
-        if self.current_round < self.rounds_total:
-            msg = "🏅 **Current Scores:**\n"
-            for player in self.players:
-                score = self.scores.get(player.id, 0)
-                msg += f"{player.mention}: {score} pts\n"
-            await self.channel.send(msg)
-            await self.channel.send(f"\n--- Starting round {self.current_round + 1} ---")
-            await asyncio.sleep(3)
-            await self.next_round()
-        else:
-            await self.final_scores()
+        try:
+            # Show scorecard after every round except the last
+            if self.current_round < self.rounds_total:
+                msg = "🏅 **Current Scores:**\n"
+                for player in self.players:
+                    score = self.scores.get(player.id, 0)
+                    msg += f"{player.mention}: {score} pts\n"
+                await self.channel.send(msg)
+                await self.channel.send(f"\n--- Starting round {self.current_round + 1} ---")
+                await asyncio.sleep(3)
+                await self.next_round()
+            else:
+                await self.final_scores()
+        except Exception as e:
+            await self.channel.send(f"❗ An unexpected error occurred during round progression: {str(e)}. The game has ended.")
+            self.active = False
+            await self._cleanup_game()
 
     async def final_scores(self):
-        leaderboard = sorted([(player, self.scores.get(player.id, 0)) for player in self.players], key=lambda x: -x[1])
-        msg = "\n🏆 **Final Scores:**\n"
-        for i, (player, score) in enumerate(leaderboard):
-            if i == 0:
-                emoji = "🥇"
-            elif i == 1:
-                emoji = "🥈"
-            elif i == 2:
-                emoji = "🥉"
-            else:
-                emoji = "🏅"
-            msg += f"{emoji} {player.mention} - {score} pts\n"
-        await self.channel.send(msg)
-        
-        # Announce winner
-        if leaderboard and leaderboard[0][1] > 0:
-            winner = leaderboard[0][0]
-            await self.channel.send(f"🎉 **{winner.mention} wins the game!** 🎉")
-        
-        self.active = False
-        # Clean up from games dictionary
-        await self._cleanup_game()
-    
+        try:
+            leaderboard = sorted([(player, self.scores.get(player.id, 0)) for player in self.players], key=lambda x: -x[1])
+            msg = "\n🏆 **Final Scores:**\n"
+            for i, (player, score) in enumerate(leaderboard):
+                if i == 0:
+                    emoji = "🥇"
+                elif i == 1:
+                    emoji = "🥈"
+                elif i == 2:
+                    emoji = "🥉"
+                else:
+                    emoji = "🏅"
+                msg += f"{emoji} {player.mention} - {score} pts\n"
+            await self.channel.send(msg)
+            
+            # Announce winner
+            if leaderboard and leaderboard[0][1] > 0:
+                winner = leaderboard[0][0]
+                await self.channel.send(f"🎉 **{winner.mention} wins the game!** 🎉")
+            
+            self.active = False
+            # Clean up from games dictionary
+            await self._cleanup_game()
+        except Exception as e:
+            await self.channel.send(f"❗ An unexpected error occurred during final scores: {str(e)}. The game has ended.")
+            self.active = False
+            await self._cleanup_game()
+
     def set_cleanup_callback(self, callback):
         """Set the cleanup callback function"""
         self._cleanup_callback = callback
@@ -425,28 +436,34 @@ class GameManager:
                 msg += f"Former player: {score} pts\n"
         await interaction.response.send_message(msg)
 
-    async def force_end(self):
-        # Show questions
-        if self.common_question and self.imposter_question:
-            await self.channel.send(f"**Game ended early!**\n\nNormal question: **{self.common_question}**\nImposter question: **{self.imposter_question}**")
-        else:
-            await self.channel.send("**Game ended early!** Question data is not present.")
-        
-        # Show final scores if game was in progress
-        if self.players and self.scores:
-            leaderboard = sorted([(player, self.scores.get(player.id, 0)) for player in self.players], key=lambda x: -x[1])
-            msg = "\n🏆 **Final Scores:**\n"
-            for player, score in leaderboard:
-                msg += f"{player.mention} - {score} pts\n"
-            await self.channel.send(msg)
-        else:
-            await self.channel.send("No scores to display.")
-          # Tag imposter
+    async def end_game_with_results(self, reason):
+        await self.channel.send(f"**Game ended early! Reason:** {reason}")
+        # Reveal imposter/question if available
         if self.imposter:
             await self.channel.send(f"The imposter was {self.imposter.mention}!")
+            if self.imposter_question:
+                await self.channel.send(f"❓ The imposter's question was: \"{self.imposter_question}\"")
         else:
             await self.channel.send("Imposter data is not present.")
-        
+        # Show final scores
+        leaderboard = sorted([(player, self.scores.get(player.id, 0)) for player in self.players], key=lambda x: -x[1])
+        msg = "\n🏆 **Final Scores:**\n"
+        for i, (player, score) in enumerate(leaderboard):
+            if i == 0:
+                emoji = "🥇"
+            elif i == 1:
+                emoji = "🥈"
+            elif i == 2:
+                emoji = "🥉"
+            else:
+                emoji = "🏅"
+            msg += f"{emoji} {player.mention} - {score} pts\n"
+        await self.channel.send(msg)
+        if leaderboard and leaderboard[0][1] > 0:
+            winner = leaderboard[0][0]
+            await self.channel.send(f"🎉 **{winner.mention} wins the game!** 🎉")
         self.active = False
-        # Clean up from games dictionary  
         await self._cleanup_game()
+
+    async def force_end(self):
+        await self.end_game_with_results("Force ended by host or player.")
