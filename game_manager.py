@@ -397,14 +397,16 @@ class GameManager:
                     emoji = "🏅"
                 msg += f"{emoji} {player.mention} - {score} pts\n"
             await self.channel.send(msg)
-            
-            # Announce winner
+            # Announce winner(s) or tie
             if leaderboard and leaderboard[0][1] > 0:
-                winner = leaderboard[0][0]
-                await self.channel.send(f"🎉 **{winner.mention} wins the game!** 🎉")
-            
+                top_score = leaderboard[0][1]
+                winners = [player for player, score in leaderboard if score == top_score]
+                if len(winners) == 1:
+                    await self.channel.send(f"🎉 **{winners[0].mention} wins the game!** 🎉")
+                else:
+                    winner_mentions = ", ".join(w.mention for w in winners)
+                    await self.channel.send(f"🤝 **It's a tie! Winners:** {winner_mentions} with {top_score} pts each!")
             self.active = False
-            # Clean up from games dictionary
             await self._cleanup_game()
         except Exception as e:
             await self.channel.send(f"❗ An unexpected error occurred during final scores: {str(e)}. The game has ended.")
@@ -460,8 +462,13 @@ class GameManager:
             msg += f"{emoji} {player.mention} - {score} pts\n"
         await self.channel.send(msg)
         if leaderboard and leaderboard[0][1] > 0:
-            winner = leaderboard[0][0]
-            await self.channel.send(f"🎉 **{winner.mention} wins the game!** 🎉")
+            top_score = leaderboard[0][1]
+            winners = [player for player, score in leaderboard if score == top_score]
+            if len(winners) == 1:
+                await self.channel.send(f"🎉 **{winners[0].mention} wins the game!** 🎉")
+            else:
+                winner_mentions = ", ".join(w.mention for w in winners)
+                await self.channel.send(f"🤝 **It's a tie! Winners:** {winner_mentions} with {top_score} pts each!")
         self.active = False
         await self._cleanup_game()
 
